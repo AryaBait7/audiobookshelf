@@ -3,9 +3,14 @@
 //   accepts comma separated lists e.g. "Jon Smith, Jane Smith" or "Smith, Jon, Smith, Jane"
 //   can be separated by "&" e.g. "Jon Smith & Jane Smith" or "Smith, Jon & Smith, Jane"
 //
-const parseFullName = require('./parseFullName')
+import parseFullName = require('./parseFullName')
 
-function parseName(name) {
+interface NameParts {
+  first_name: string | undefined
+  last_name: string | undefined
+}
+
+function parseName(name: string): NameParts {
   var parts = parseFullName(name)
   var firstName = parts.first
   if (firstName && parts.middle) firstName += ' ' + parts.middle
@@ -18,7 +23,7 @@ function parseName(name) {
 
 // Check if this name segment is of the format "Last, First" or "First Last"
 // return true is "Last, First"
-function checkIsALastName(name) {
+function checkIsALastName(name: string): boolean {
   if (!name.includes(' ')) return true // No spaces must be a Last name
 
   var parsed = parseFullName(name)
@@ -28,7 +33,7 @@ function checkIsALastName(name) {
 }
 
 // Handle name already in First Last format and return Last, First
-module.exports.nameToLastFirst = (firstLast) => {
+const nameToLastFirst = (firstLast: string): string | undefined => {
   var nameObj = parseName(firstLast)
   if (!nameObj.last_name) return nameObj.first_name
   else if (!nameObj.first_name) return nameObj.last_name
@@ -38,13 +43,13 @@ module.exports.nameToLastFirst = (firstLast) => {
 /**
  * Parses a name string into an array of names
  *
- * @param {string} nameString - The name string to parse
- * @returns {{ names: string[] }} Array of names
+ * @param nameString - The name string to parse
+ * @returns Array of names
  */
-module.exports.parse = (nameString) => {
+const parse = (nameString: string | null | undefined): { names: string[] } | null => {
   if (!nameString) return null
 
-  let splitNames = []
+  let splitNames: string[] = []
   const isCommaSeparated = nameString.includes(',')
 
   // Example &LF: Friedman, Milton & Friedman, Rose
@@ -66,7 +71,7 @@ module.exports.parse = (nameString) => {
     }
   }
 
-  let names = []
+  let names: NameParts[] = []
 
   // 1 name FIRST LAST
   if (splitNames.length === 1) {
@@ -105,6 +110,9 @@ module.exports.parse = (nameString) => {
   const namesArray = [...new Set(names.map((a) => (a.first_name ? `${a.first_name} ${a.last_name}` : a.last_name)))]
 
   return {
-    names: namesArray // Array of first last
+    // names without first_name were kept only if they have a last_name (filter above)
+    names: namesArray as string[] // Array of first last
   }
 }
+
+export = { nameToLastFirst, parse }

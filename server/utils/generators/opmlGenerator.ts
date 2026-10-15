@@ -1,17 +1,22 @@
-const xml = require('../../libs/xml')
-const escapeForXML = require('../../libs/xml/escapeForXML')
+import xml = require('../../libs/xml')
+import escapeForXML = require('../../libs/xml/escapeForXML')
+/** The Podcast model fields read here (models/Podcast is still JS and its fields are not visible to TS) */
+interface OpmlPodcast {
+  title: string | null
+  feedURL: string | null
+  description: string | null
+  itunesPageUrl: string | null
+  language: string | null
+}
 
 /**
  * Generate OPML file string for podcasts in a library
- * @param {import('../../models/Podcast')[]} podcasts 
- * @param {boolean} [indent=true] 
- * @returns {string}
  */
-module.exports.generate = (podcasts, indent = true) => {
-  const bodyItems = []
+const generate = (podcasts: OpmlPodcast[], indent = true): string => {
+  const bodyItems: { outline: { _attr: Record<string, string> } }[] = []
   podcasts.forEach((podcast) => {
     if (!podcast.feedURL) return
-    const feedAttributes = {
+    const feedAttributes: Record<string, string> = {
       type: 'rss',
       text: escapeForXML(podcast.title),
       title: escapeForXML(podcast.title),
@@ -57,3 +62,5 @@ module.exports.generate = (podcasts, indent = true) => {
 
   return '<?xml version="1.0" encoding="UTF-8"?>\n' + xml(data, indent)
 }
+
+export = { generate }

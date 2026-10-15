@@ -38,3 +38,8 @@ tailwind.config.js
 /server/utils/htmlEntities.js
 /server/utils/htmlSanitizer.js
 /server/utils/parsers/parseComicInfoMetadata.js
+/server/utils/notifications.js
+/server/utils/generators/hlsPlaylistGenerator.js
+/server/utils/generators/opmlGenerator.js
+/server/utils/parsers/parseFullName.js
+/server/utils/parsers/parseNameString.js

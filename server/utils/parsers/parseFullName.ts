@@ -1,13 +1,31 @@
 
 
 // https://github.com/RateGravity/parse-full-name/blob/master/index.js
-module.exports = (nameToParse, partToReturn, fixCase, stopOnError, useLongLists) => {
 
-  var i, j, k, l, m, n, part, comma, titleList, suffixList, prefixList, regex,
-    partToCheck, partFound, partsFoundCount, firstComma, remainingCommas,
-    nameParts = [], nameCommas = [null], partsFound = [],
+interface ParsedFullName {
+  title: string
+  first: string
+  middle: string
+  last: string
+  nick: string
+  suffix: string
+  error: string[]
+}
+
+/** Internal view of ParsedFullName: the algorithm reads and writes parts by label (string key) */
+type ParsedNameRecord = ParsedFullName & { [part: string]: string | string[] }
+
+type FlagArg = boolean | number
+
+function parseFullName(nameToParse: string | null | undefined): ParsedFullName
+function parseFullName(nameToParse: string | null | undefined, partToReturn?: string, fixCase?: FlagArg, stopOnError?: FlagArg, useLongLists?: FlagArg): ParsedFullName | string | string[]
+function parseFullName(nameToParse: string | null | undefined, partToReturn?: string, fixCase?: FlagArg, stopOnError?: FlagArg, useLongLists?: FlagArg): ParsedFullName | string | string[] {
+
+  var i: number, j: number, k, l: number, m: number, n: string[], part: string, comma: string | null, titleList: string[], suffixList: string[], prefixList: string[], regex: RegExp,
+    partToCheck: string, partFound: RegExpMatchArray | null, partsFoundCount: number, firstComma: number, remainingCommas: number,
+    nameParts: string[] = [], nameCommas: (string | null)[] = [null], partsFound: string[] = [],
     conjunctionList = ['&', 'and', 'et', 'e', 'of', 'the', 'und', 'y'],
-    parsedName = {
+    parsedName: ParsedNameRecord = {
       title: '', first: '', middle: '', last: '', nick: '', suffix: '', error: []
     };
 
@@ -18,7 +36,9 @@ module.exports = (nameToParse, partToReturn, fixCase, stopOnError, useLongLists)
   // 'all' = return object with all parts, others return single part
   if (fixCase === false) fixCase = 0;
   if (fixCase === true) fixCase = 1;
-  fixCase = fixCase !== 'undefined' && (fixCase === 0 || fixCase === 1) ?
+  // The upstream code also tested `fixCase !== 'undefined'` (a string) here. That test can only be
+  // false when the other condition is false too, so it was dropped (TS2367: no type overlap).
+  fixCase = (fixCase === 0 || fixCase === 1) ?
     fixCase : -1; // -1 = fix case only if input is all upper or lowercase
   if (stopOnError === true) stopOnError = 1;
   stopOnError = stopOnError && stopOnError === 1 ? 1 : 0;
@@ -27,7 +47,7 @@ module.exports = (nameToParse, partToReturn, fixCase, stopOnError, useLongLists)
   useLongLists = useLongLists && useLongLists === 1 ? 1 : 0; // 0 = short lists
 
   // If stopOnError = 1, throw error, otherwise return error messages in array
-  function handleError(errorMessage) {
+  function handleError(errorMessage: string) {
     if (stopOnError) {
       throw 'Error: ' + errorMessage;
     } else {
@@ -36,13 +56,13 @@ module.exports = (nameToParse, partToReturn, fixCase, stopOnError, useLongLists)
   }
 
   // If fixCase = 1, fix case of parsedName parts before returning
-  function fixParsedNameCase(fixedCaseName, fixCaseNow) {
+  function fixParsedNameCase(fixedCaseName: ParsedNameRecord, fixCaseNow: number) {
     var forceCaseList = ['e', 'y', 'av', 'af', 'da', 'dal', 'de', 'del', 'der', 'di',
       'la', 'le', 'van', 'der', 'den', 'vel', 'von', 'II', 'III', 'IV', 'J.D.', 'LL.M.',
       'M.D.', 'D.O.', 'D.C.', 'Ph.D.'];
-    var forceCaseListIndex;
-    var namePartLabels = [];
-    var namePartWords;
+    var forceCaseListIndex: number;
+    var namePartLabels: string[] = [];
+    var namePartWords: string[];
     if (fixCaseNow) {
       namePartLabels = Object.keys(parsedName)
         .filter(function (v) { return v !== 'error'; });
@@ -321,7 +341,8 @@ module.exports = (nameToParse, partToReturn, fixCase, stopOnError, useLongLists)
     }
   } else {
     // Remove and store last part as last name
-    parsedName.last = nameParts.pop();
+    // nameParts is non-empty here (empty cases returned above)
+    parsedName.last = nameParts.pop() as string;
   }
   if (!nameParts.length) {
     parsedName = fixParsedNameCase(parsedName, fixCase);
@@ -329,7 +350,8 @@ module.exports = (nameToParse, partToReturn, fixCase, stopOnError, useLongLists)
   }
 
   // First name: remove and store first part as first name
-  parsedName.first = nameParts.shift();
+  // nameParts is non-empty here (empty cases returned above)
+  parsedName.first = nameParts.shift() as string;
   if (!nameParts.length) {
     parsedName = fixParsedNameCase(parsedName, fixCase);
     return partToReturn === 'all' ? parsedName : parsedName[partToReturn];
@@ -343,4 +365,6 @@ module.exports = (nameToParse, partToReturn, fixCase, stopOnError, useLongLists)
 
   parsedName = fixParsedNameCase(parsedName, fixCase);
   return partToReturn === 'all' ? parsedName : parsedName[partToReturn];
-};
+}
+
+export = parseFullName
