@@ -39,12 +39,14 @@ class AudioTrack {
     this.index = audioFile.index
     this.startOffset = startOffset
     this.duration = audioFile.duration
-    this.title = audioFile.metadata.filename || ''
+    // audioFile is a populated (scanned) file, so its metadata is set
+    const metadata = audioFile.metadata as FileMetadata
+    this.title = metadata.filename || ''
 
     this.contentUrl = `/api/items/${itemId}/file/${audioFile.ino}`
     this.mimeType = audioFile.mimeType
     this.codec = audioFile.codec || null
-    this.metadata = audioFile.metadata.clone()
+    this.metadata = metadata.clone()
   }
 
   setFromStream(title: string, duration: number, contentUrl: string): void {

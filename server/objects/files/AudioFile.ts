@@ -1,12 +1,72 @@
-const { AudioMimeType } = require('../../utils/constants')
-const AudioMetaTags = require('../metadata/AudioMetaTags')
-const FileMetadata = require('../metadata/FileMetadata')
+import constants = require('../../utils/constants')
+import AudioMetaTags = require('../metadata/AudioMetaTags')
+import FileMetadata = require('../metadata/FileMetadata')
+import type LibraryFile = require('./LibraryFile')
+import type MediaProbeData = require('../../scanner/MediaProbeData')
+
+const { AudioMimeType } = constants
+
+type AudioFileChapter = MediaProbeData.ProbeChapter
+type FileMetadataJSON = NonNullable<ConstructorParameters<typeof FileMetadata>[0]>
+
+/** Serialized AudioFile (toJSON output / stored JSON); cdNumFromFilename is a legacy name for discNumFromFilename */
+interface AudioFileData {
+  index: number | null
+  ino: string | null
+  metadata?: ConstructorParameters<typeof FileMetadata>[0]
+  addedAt: number | null
+  updatedAt: number | null
+  trackNumFromMeta: number | null
+  discNumFromMeta: number | null
+  trackNumFromFilename: number | null
+  discNumFromFilename: number | null
+  /** Legacy name of discNumFromFilename (TEMP support in construct()) */
+  cdNumFromFilename?: number | null
+  manuallyVerified?: boolean
+  exclude?: boolean
+  error?: string | null
+  format: string | null
+  duration: number | null
+  bitRate: number | null
+  language: string | null
+  codec: string | null
+  timeBase: string | null
+  channels: number | null
+  channelLayout: string | null
+  chapters: AudioFileChapter[]
+  embeddedCoverArt: string | null
+  metaTags?: ConstructorParameters<typeof AudioMetaTags>[0]
+}
 
 class AudioFile {
-  constructor(data) {
+  index: number | null
+  ino: string | null
+  metadata: FileMetadata | null
+  addedAt: number | null
+  updatedAt: number | null
+  trackNumFromMeta: number | null
+  discNumFromMeta: number | null
+  trackNumFromFilename: number | null
+  discNumFromFilename: number | null
+  format: string | null
+  duration: number | null
+  bitRate: number | null
+  language: string | null
+  codec: string | null
+  timeBase: string | null
+  channels: number | null
+  channelLayout: string | null
+  chapters: AudioFileChapter[]
+  embeddedCoverArt: string | null
+  /** Tags scraped from the audio file */
+  metaTags: AudioMetaTags | null
+  manuallyVerified: boolean
+  exclude: boolean
+  error: string | null
+
+  constructor(data?: AudioFileData | null) {
     this.index = null
     this.ino = null
-    /** @type {FileMetadata} */
     this.metadata = null
     this.addedAt = null
     this.updatedAt = null
@@ -28,7 +88,6 @@ class AudioFile {
     this.embeddedCoverArt = null
 
     // Tags scraped from the audio file
-    /** @type {AudioMetaTags} */
     this.metaTags = null
 
     this.manuallyVerified = false
@@ -44,7 +103,8 @@ class AudioFile {
     return {
       index: this.index,
       ino: this.ino,
-      metadata: this.metadata.toJSON(),
+      // metadata is set once constructed/probed; toJSON is only called on populated files
+      metadata: (this.metadata as FileMetadata).toJSON(),
       addedAt: this.addedAt,
       updatedAt: this.updatedAt,
       trackNumFromMeta: this.trackNumFromMeta,
@@ -69,10 +129,11 @@ class AudioFile {
     }
   }
 
-  construct(data) {
+  construct(data: AudioFileData): void {
     this.index = data.index
     this.ino = data.ino
-    this.metadata = new FileMetadata(data.metadata || {})
+    // Data without metadata yields a FileMetadata whose fields are undefined, as before
+    this.metadata = new FileMetadata(data.metadata || ({} as FileMetadataJSON))
     this.addedAt = data.addedAt
     this.updatedAt = data.updatedAt
     this.manuallyVerified = !!data.manuallyVerified
@@ -100,8 +161,9 @@ class AudioFile {
     this.metaTags = new AudioMetaTags(data.metaTags || {})
   }
 
-  get mimeType() {
-    const format = this.metadata.format.toUpperCase()
+  get mimeType(): string {
+    const format = (this.metadata as FileMetadata).format.toUpperCase() as keyof typeof AudioMimeType
+    // format is any upper-cased extension; only known ones are in AudioMimeType
     if (AudioMimeType[format]) {
       return AudioMimeType[format]
     } else {
@@ -110,7 +172,7 @@ class AudioFile {
   }
 
   // New scanner creates AudioFile from AudioFileScanner
-  setDataFromProbe(libraryFile, probeData) {
+  setDataFromProbe(libraryFile: LibraryFile, probeData: MediaProbeData): void {
     this.ino = libraryFile.ino || null
 
     if (libraryFile.metadata instanceof FileMetadata) {
@@ -135,7 +197,7 @@ class AudioFile {
     this.embeddedCoverArt = probeData.embeddedCoverArt
   }
 
-  syncChapters(updatedChapters) {
+  syncChapters(updatedChapters: AudioFileChapter[]): boolean {
     if (this.chapters.length !== updatedChapters.length) {
       this.chapters = updatedChapters.map(ch => ({ ...ch }))
       return true
@@ -159,41 +221,45 @@ class AudioFile {
     return hasUpdates
   }
 
-  clone() {
+  clone(): AudioFile {
     return new AudioFile(this.toJSON())
   }
 
   /**
-   * 
-   * @param {AudioFile} scannedAudioFile 
-   * @returns {boolean} true if updates were made
+   * @returns true if updates were made
    */
-  updateFromScan(scannedAudioFile) {
+  updateFromScan(scannedAudioFile: AudioFile): boolean {
     let hasUpdated = false
 
     const newjson = scannedAudioFile.toJSON()
     const ignoreKeys = ['manuallyVerified', 'ctimeMs', 'addedAt', 'updatedAt']
+    // Writable view for the generic key loop (keys of toJSON(); all are members of AudioFile)
+    const fields = this as Record<AudioFileJSONKey, unknown>
 
     for (const key in newjson) {
-      if (key === 'metadata') {
-        if (this.metadata.update(newjson[key])) {
+      const k = key as AudioFileJSONKey
+      if (k === 'metadata') {
+        if ((this.metadata as FileMetadata).update(newjson[k])) {
           hasUpdated = true
         }
       } else if (key === 'metaTags') {
         if (!this.metaTags || !this.metaTags.isEqual(scannedAudioFile.metaTags)) {
-          this.metaTags = scannedAudioFile.metaTags.clone()
+          // isEqual() returned false, so scannedAudioFile.metaTags is set
+          this.metaTags = (scannedAudioFile.metaTags as AudioMetaTags).clone()
           hasUpdated = true
         }
       } else if (key === 'chapters') {
         if (this.syncChapters(newjson.chapters || [])) {
           hasUpdated = true
         }
-      } else if (!ignoreKeys.includes(key) && this[key] !== newjson[key]) {
-        this[key] = newjson[key]
+      } else if (!ignoreKeys.includes(key) && fields[k] !== newjson[k]) {
+        fields[k] = newjson[k]
         hasUpdated = true
       }
     }
     return hasUpdated
   }
 }
-module.exports = AudioFile
+type AudioFileJSONKey = keyof ReturnType<AudioFile['toJSON']>
+
+export = AudioFile

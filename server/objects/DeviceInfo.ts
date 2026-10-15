@@ -1,11 +1,52 @@
-const uuidv4 = require('uuid').v4
-const { stripAllTags } = require('../utils/htmlSanitizer')
+import uuid = require('uuid')
+import htmlSanitizer = require('../utils/htmlSanitizer')
+
+const uuidv4 = uuid.v4
+const { stripAllTags } = htmlSanitizer
+
+type DeviceInfoKey = 'id' | 'userId' | 'deviceId' | 'ipAddress' | 'browserName' | 'browserVersion' | 'osName' | 'osVersion' | 'deviceType' | 'clientVersion' | 'manufacturer' | 'model' | 'sdkVersion' | 'clientName' | 'deviceName'
+
+/** toJSON() output: null/undefined fields are omitted */
+type DeviceInfoJSON = Partial<Record<DeviceInfoKey, string | null>>
+
+/** Parsed user agent (ua-parser-js result, see utils/parsers) */
+interface UserAgentResult {
+  browser: { name?: string; version?: string }
+  os: { name?: string; version?: string }
+  device: { type?: string }
+}
+
+/** Device info sent by a client (untrusted; string fields are sanitized in setData) */
+interface ClientDeviceInfo {
+  deviceId?: string
+  clientVersion?: unknown
+  manufacturer?: unknown
+  model?: unknown
+  sdkVersion?: unknown
+  clientName?: unknown
+}
 
 class DeviceInfo {
-  /** @type {string[]} Fields to sanitize when loading from stored data */
-  static stringFields = ['deviceId', 'clientVersion', 'manufacturer', 'model', 'sdkVersion', 'clientName', 'deviceName']
+  id: string | null
+  userId: string | null
+  deviceId: string | null
+  ipAddress: string | null
+  browserName: string | null
+  browserVersion: string | null
+  osName: string | null
+  osVersion: string | null
+  deviceType: string | null
+  clientVersion: string | null
+  manufacturer: string | null
+  model: string | null
+  sdkVersion: string | null
+  clientName: string | null
+  deviceName: string | null
 
-  constructor(deviceInfo = null) {
+  /** Fields to sanitize when loading from stored data */
+  static stringFields: string[] = ['deviceId', 'clientVersion', 'manufacturer', 'model', 'sdkVersion', 'clientName', 'deviceName']
+
+  constructor(deviceInfo: DeviceInfoJSON | null = null) {
     this.id = null
     this.userId = null
     this.deviceId = null
@@ -32,16 +73,19 @@ class DeviceInfo {
     }
   }
 
-  construct(deviceInfo) {
+  construct(deviceInfo: DeviceInfoJSON): void {
+    // Writable view for the generic key loop; unknown keys are skipped by the !== undefined check
+    const fields = this as Record<DeviceInfoKey, unknown>
     for (const key in deviceInfo) {
-      if (deviceInfo[key] !== undefined && this[key] !== undefined) {
-        this[key] = DeviceInfo.stringFields.includes(key) ? stripAllTags(deviceInfo[key]) : deviceInfo[key]
+      const k = key as DeviceInfoKey
+      if (deviceInfo[k] !== undefined && fields[k] !== undefined) {
+        fields[k] = DeviceInfo.stringFields.includes(key) ? stripAllTags(deviceInfo[k]) : deviceInfo[k]
       }
     }
   }
 
-  toJSON() {
-    const obj = {
+  toJSON(): DeviceInfoJSON {
+    const obj: DeviceInfoJSON = {
       id: this.id,
       userId: this.userId,
       deviceId: this.deviceId,
@@ -59,14 +103,15 @@ class DeviceInfo {
       deviceName: this.deviceName
     }
     for (const key in obj) {
-      if (obj[key] === null || obj[key] === undefined) {
-        delete obj[key]
+      const k = key as DeviceInfoKey
+      if (obj[k] === null || obj[k] === undefined) {
+        delete obj[k]
       }
     }
     return obj
   }
 
-  get deviceDescription() {
+  get deviceDescription(): string {
     if (this.model) {
       // Set from mobile apps
       if (this.sdkVersion) return `${this.model} SDK ${this.sdkVersion} / v${this.clientVersion}`
@@ -76,12 +121,12 @@ class DeviceInfo {
   }
 
   // When client doesn't send a device id
-  getTempDeviceId() {
+  getTempDeviceId(): string {
     const keys = [this.userId, this.browserName, this.browserVersion, this.osName, this.osVersion, this.clientVersion, this.manufacturer, this.model, this.sdkVersion, this.ipAddress].map((k) => k || '')
     return 'temp-' + Buffer.from(keys.join('-'), 'utf-8').toString('base64')
   }
 
-  setData(ip, ua, clientDeviceInfo, serverVersion, userId) {
+  setData(ip: string | null | undefined, ua: UserAgentResult | null | undefined, clientDeviceInfo: ClientDeviceInfo | null | undefined, serverVersion: string, userId: string): void {
     this.id = uuidv4()
     this.userId = userId
     this.deviceId = clientDeviceInfo?.deviceId || this.id
@@ -122,16 +167,20 @@ class DeviceInfo {
     }
   }
 
-  update(deviceInfo) {
+  update(deviceInfo: DeviceInfo | (DeviceInfoJSON & { toJSON?: undefined })): boolean {
     const deviceInfoJson = deviceInfo.toJSON ? deviceInfo.toJSON() : deviceInfo
     const existingDeviceInfoJson = this.toJSON()
+
+    // Writable view for the generic key loops (keys are DeviceInfoJSON keys)
+    const fields = this as Record<DeviceInfoKey, unknown>
 
     let hasUpdates = false
     for (const key in deviceInfoJson) {
       if (['id', 'deviceId'].includes(key)) continue
 
-      if (deviceInfoJson[key] !== existingDeviceInfoJson[key]) {
-        this[key] = deviceInfoJson[key]
+      const k = key as DeviceInfoKey
+      if (deviceInfoJson[k] !== existingDeviceInfoJson[k]) {
+        fields[k] = deviceInfoJson[k]
         hasUpdates = true
       }
     }
@@ -139,8 +188,9 @@ class DeviceInfo {
     for (const key in existingDeviceInfoJson) {
       if (['id', 'deviceId'].includes(key)) continue
 
-      if (existingDeviceInfoJson[key] && !deviceInfoJson[key]) {
-        this[key] = null
+      const k = key as DeviceInfoKey
+      if (existingDeviceInfoJson[k] && !deviceInfoJson[k]) {
+        fields[k] = null
         hasUpdates = true
       }
     }
@@ -148,4 +198,4 @@ class DeviceInfo {
     return hasUpdates
   }
 }
-module.exports = DeviceInfo
+export = DeviceInfo

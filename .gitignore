@@ -54,3 +54,7 @@ tailwind.config.js
 /server/objects/files/EBookFile.js
 /server/objects/files/LibraryFile.js
 /server/scanner/MediaProbeData.js
+/server/objects/files/AudioFile.js
+/server/objects/DeviceInfo.js
+/server/utils/profiler.js
+/server/utils/parsers/parseOPML.js
