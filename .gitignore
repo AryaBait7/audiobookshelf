@@ -62,3 +62,6 @@ tailwind.config.js
 /server/utils/index.js
 /server/utils/zipHelpers.js
 /server/utils/rateLimiterFactory.js
+/server/objects/DailyLog.js
+/server/managers/LogManager.js
+/server/managers/MigrationManager.js
