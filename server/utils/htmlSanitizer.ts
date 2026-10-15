@@ -1,12 +1,11 @@
-const sanitizeHtml = require('../libs/sanitizeHtml')
-const { entities } = require('./htmlEntities')
+import sanitizeHtml = require('../libs/sanitizeHtml')
+import htmlEntities = require('./htmlEntities')
+const { entities } = htmlEntities
 
 /**
- *
- * @param {string} html
- * @returns {string}
+ * `html` is type-checked at runtime; non-string input returns ""
  */
-function sanitize(html) {
+function sanitize(html: unknown): string {
   if (typeof html !== 'string') {
     return ''
   }
@@ -23,9 +22,8 @@ function sanitize(html) {
 
   return sanitizeHtml(html, sanitizerOptions)
 }
-module.exports.sanitize = sanitize
 
-function stripAllTags(html, shouldDecodeEntities = true) {
+function stripAllTags(html: unknown, shouldDecodeEntities = true): string {
   if (typeof html !== 'string') return ''
 
   const sanitizerOptions = {
@@ -36,9 +34,8 @@ function stripAllTags(html, shouldDecodeEntities = true) {
   let sanitized = sanitizeHtml(html, sanitizerOptions)
   return shouldDecodeEntities ? decodeHTMLEntities(sanitized) : sanitized
 }
-module.exports.stripAllTags = stripAllTags
 
-function decodeHTMLEntities(strToDecode) {
+function decodeHTMLEntities(strToDecode: string): string {
   return strToDecode.replace(/\&([^;]+);?/g, function (entity) {
     if (entity in entities) {
       return entities[entity]
@@ -46,3 +43,5 @@ function decodeHTMLEntities(strToDecode) {
     return entity
   })
 }
+
+export = { sanitize, stripAllTags }

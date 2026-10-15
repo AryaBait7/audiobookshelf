@@ -35,3 +35,6 @@ tailwind.config.js
 /server/utils/longTimeout.js
 /server/utils/parsers/parseSeriesString.js
 /server/utils/parsers/parseUserAgent.js
+/server/utils/htmlEntities.js
+/server/utils/htmlSanitizer.js
+/server/utils/parsers/parseComicInfoMetadata.js
