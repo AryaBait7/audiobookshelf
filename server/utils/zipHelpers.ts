@@ -1,10 +1,14 @@
-const Path = require('path')
-const { Response } = require('express')
-const Logger = require('../Logger')
-const archiver = require('../libs/archiver')
+// Exports: ES named exports (emitted onto the original `exports` object; tests stub zipDirectoriesPipe on it)
+import Path = require('path')
+import type { Response } from 'express'
+import Logger = require('../Logger')
+import archiver = require('../libs/archiver')
 
-module.exports.zipDirectoryPipe = (path, filename, res) => {
-  return new Promise((resolve, reject) => {
+/** Archiver warning/error events carry Node system errors */
+type ArchiverError = NodeJS.ErrnoException
+
+export const zipDirectoryPipe = (path: string, filename: string, res: Response): Promise<void> => {
+  return new Promise<void>((resolve, reject) => {
     // create a file to stream archive data to
     res.attachment(filename)
 
@@ -28,7 +32,7 @@ module.exports.zipDirectoryPipe = (path, filename, res) => {
     })
 
     // good practice to catch warnings (ie stat failures and other non-blocking errors)
-    archive.on('warning', function (err) {
+    archive.on('warning', function (err: ArchiverError) {
       if (err.code === 'ENOENT') {
         // log warning
         Logger.warn(`[DownloadManager] Archiver warning: ${err.message}`)
@@ -39,7 +43,7 @@ module.exports.zipDirectoryPipe = (path, filename, res) => {
         reject(err)
       }
     })
-    archive.on('error', function (err) {
+    archive.on('error', function (err: ArchiverError) {
       Logger.error(`[DownloadManager] Archiver error: ${err.message}`)
       reject(err)
     })
@@ -56,13 +60,12 @@ module.exports.zipDirectoryPipe = (path, filename, res) => {
 /**
  * Creates a zip archive containing multiple directories and streams it to the response.
  *
- * @param {{ path: string, isFile: boolean }[]} pathObjects
- * @param {string} filename - Name of the zip file to be sent as attachment.
- * @param {Response} res - Response object to pipe the archive data to.
- * @returns {Promise<void>} - Promise that resolves when the zip operation completes.
+ * @param filename - Name of the zip file to be sent as attachment.
+ * @param res - Response object to pipe the archive data to.
+ * @returns Promise that resolves when the zip operation completes.
  */
-module.exports.zipDirectoriesPipe = (pathObjects, filename, res) => {
-  return new Promise((resolve, reject) => {
+export const zipDirectoriesPipe = (pathObjects: { path: string; isFile: boolean }[], filename: string, res: Response): Promise<void> => {
+  return new Promise<void>((resolve, reject) => {
     // create a file to stream archive data to
     res.attachment(filename)
 
@@ -86,7 +89,7 @@ module.exports.zipDirectoriesPipe = (pathObjects, filename, res) => {
     })
 
     // good practice to catch warnings (ie stat failures and other non-blocking errors)
-    archive.on('warning', function (err) {
+    archive.on('warning', function (err: ArchiverError) {
       if (err.code === 'ENOENT') {
         // log warning
         Logger.warn(`[DownloadManager] Archiver warning: ${err.message}`)
@@ -97,7 +100,7 @@ module.exports.zipDirectoriesPipe = (pathObjects, filename, res) => {
         reject(err)
       }
     })
-    archive.on('error', function (err) {
+    archive.on('error', function (err: ArchiverError) {
       Logger.error(`[DownloadManager] Archiver error: ${err.message}`)
       reject(err)
     })
@@ -122,13 +125,11 @@ module.exports.zipDirectoriesPipe = (pathObjects, filename, res) => {
 /**
  * Handles errors that occur during the download process.
  *
- * @param {*} error
- * @param {Response} res
- * @returns {*}
+ * @param error - any thrown value; only `code` is inspected
  */
-module.exports.handleDownloadError = (error, res) => {
+export const handleDownloadError = (error: unknown, res: Response): Response | undefined => {
   if (!res.headersSent) {
-    if (error.code === 'ENOENT') {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       return res.status(404).send('File not found')
     } else {
       return res.status(500).send('Download failed')

@@ -1,6 +1,10 @@
-const { rateLimit, RateLimitRequestHandler } = require('express-rate-limit')
-const Logger = require('../Logger')
-const requestIp = require('../libs/requestIp')
+import expressRateLimit = require('express-rate-limit')
+import Logger = require('../Logger')
+import requestIp = require('../libs/requestIp')
+import type { RequestHandler } from 'express'
+
+// The original also destructured RateLimitRequestHandler (a type-only export, undefined at runtime)
+const { rateLimit } = expressRateLimit
 
 /**
  * Factory for creating authentication rate limiters
@@ -9,15 +13,16 @@ class RateLimiterFactory {
   static DEFAULT_WINDOW_MS = 10 * 60 * 1000 // 10 minutes
   static DEFAULT_MAX = 40 // 40 attempts
 
+  authRateLimiter: RequestHandler | null
+
   constructor() {
     this.authRateLimiter = null
   }
 
   /**
-   * Get the authentication rate limiter
-   * @returns {RateLimitRequestHandler}
+   * Get the authentication rate limiter (a no-op handler when disabled by ENV)
    */
-  getAuthRateLimiter() {
+  getAuthRateLimiter(): RequestHandler {
     if (this.authRateLimiter) {
       return this.authRateLimiter
     }
@@ -30,16 +35,17 @@ class RateLimiterFactory {
     }
 
     let windowMs = RateLimiterFactory.DEFAULT_WINDOW_MS
-    if (parseInt(process.env.RATE_LIMIT_AUTH_WINDOW) > 0) {
-      windowMs = parseInt(process.env.RATE_LIMIT_AUTH_WINDOW)
+    // parseInt(undefined) is NaN, which fails the > 0 check (same for MAX below)
+    if (parseInt(process.env.RATE_LIMIT_AUTH_WINDOW as string) > 0) {
+      windowMs = parseInt(process.env.RATE_LIMIT_AUTH_WINDOW as string)
       if (windowMs !== RateLimiterFactory.DEFAULT_WINDOW_MS) {
         Logger.info(`[RateLimiterFactory] Authentication rate limiting window set to ${windowMs}ms by ENV variable`)
       }
     }
 
     let max = RateLimiterFactory.DEFAULT_MAX
-    if (parseInt(process.env.RATE_LIMIT_AUTH_MAX) > 0) {
-      max = parseInt(process.env.RATE_LIMIT_AUTH_MAX)
+    if (parseInt(process.env.RATE_LIMIT_AUTH_MAX as string) > 0) {
+      max = parseInt(process.env.RATE_LIMIT_AUTH_MAX as string)
       if (max !== RateLimiterFactory.DEFAULT_MAX) {
         Logger.info(`[RateLimiterFactory] Authentication rate limiting max set to ${max} by ENV variable`)
       }
@@ -57,7 +63,8 @@ class RateLimiterFactory {
       legacyHeaders: false,
       keyGenerator: (req) => {
         // Override keyGenerator to handle proxy IPs
-        return requestIp.getClientIp(req) || req.ip
+        // req.ip is only undefined for a destroyed socket
+        return (requestIp.getClientIp(req) || req.ip) as string
       },
       handler: (req, res) => {
         const userAgent = req.get('User-Agent') || 'Unknown'
@@ -79,4 +86,4 @@ class RateLimiterFactory {
   }
 }
 
-module.exports = new RateLimiterFactory()
+export = new RateLimiterFactory()

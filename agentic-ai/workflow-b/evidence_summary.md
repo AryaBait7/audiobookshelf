@@ -13,3 +13,4 @@ Baseline (513a0679): 184 eligible JS files (169 convertible; 15 Umzug migrations
 | 07 | AudioMetaTags, AudioTrack, EBookFile, LibraryFile, MediaProbeData (+FileMetadata revised) | 28 | 354 / 0 | 0 | 13/13 | Strict 0, export shape 6/6 vs baseline. Self-caught near-regression (toJSON vs instance) reverted before testing. Latent bug recorded (stat failure → ino undefined) |
 | 08 | AudioFile, DeviceInfo, profiler, parseOPML (+AudioTrack revised) | 32 | 354 / 0 | 0 | 13/13 | Strict 0, export shape 5/5 vs baseline |
 | 09 | utils/fileUtils (hub, 34 dependants) + ssrf-req-filter d.ts | 33 | 354 / 0 | 0 | 13/13 | Found module-level `this` export-routing hazard; recipe amended to ES named exports for incremental-export modules. Strict 0 |
+| 10 | utils/index (hub, 36 dependants), zipHelpers, rateLimiterFactory | 36 | 354 / 0 | 0 | 13/13 | Named-export recipe; `this.x` routing verified in emit. Strict 0 |

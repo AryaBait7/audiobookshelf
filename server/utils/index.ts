@@ -1,10 +1,17 @@
-const Path = require('path')
-const uuid = require('uuid')
-const Logger = require('../Logger')
-const { parseString } = require('xml2js')
-const areEquivalent = require('./areEquivalent')
+/// <reference path="../../types/global.d.ts" />
+// Exports: ES named exports (emitted onto the original `exports` object). Members that were assigned
+// directly to module.exports and reached via module-level `this` use `export const`, whose references
+// TS emits as `exports.x` (same routing); members with a local binding use `export { x }`.
+import Path = require('path')
+import uuid = require('uuid')
+import Logger = require('../Logger')
+import xml2js = require('xml2js')
+import areEquivalent = require('./areEquivalent')
+import type { Request } from 'express'
 
-const levenshteinDistance = (str1, str2, caseSensitive = false) => {
+const { parseString } = xml2js
+
+const levenshteinDistance = (str1: string, str2: string, caseSensitive = false): number => {
   str1 = String(str1)
   str2 = String(str2)
   if (!caseSensitive) {
@@ -13,7 +20,7 @@ const levenshteinDistance = (str1, str2, caseSensitive = false) => {
   }
   const track = Array(str2.length + 1)
     .fill(null)
-    .map(() => Array(str1.length + 1).fill(null))
+    .map(() => Array<number | null>(str1.length + 1).fill(null))
   for (let i = 0; i <= str1.length; i += 1) {
     track[0][i] = i
   }
@@ -23,48 +30,48 @@ const levenshteinDistance = (str1, str2, caseSensitive = false) => {
   for (let j = 1; j <= str2.length; j += 1) {
     for (let i = 1; i <= str1.length; i += 1) {
       const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1
+      // Every cell read here was filled by the loops above (row 0, column 0, then left/up neighbours)
       track[j][i] = Math.min(
-        track[j][i - 1] + 1, // deletion
-        track[j - 1][i] + 1, // insertion
-        track[j - 1][i - 1] + indicator // substitution
+        (track[j][i - 1] as number) + 1, // deletion
+        (track[j - 1][i] as number) + 1, // insertion
+        (track[j - 1][i - 1] as number) + indicator // substitution
       )
     }
   }
-  return track[str2.length][str1.length]
+  return track[str2.length][str1.length] as number
 }
-module.exports.levenshteinDistance = levenshteinDistance
+export { levenshteinDistance }
 
-const levenshteinSimilarity = (str1, str2, caseSensitive = false) => {
+const levenshteinSimilarity = (str1: string, str2: string, caseSensitive = false): number => {
   const distance = levenshteinDistance(str1, str2, caseSensitive)
   const maxLength = Math.max(str1.length, str2.length)
   if (maxLength === 0) return 1
   return 1 - distance / maxLength
 }
-module.exports.levenshteinSimilarity = levenshteinSimilarity
+export { levenshteinSimilarity }
 
-module.exports.isObject = (val) => {
+export const isObject = (val: unknown): val is object => {
   return val !== null && typeof val === 'object'
 }
 
-module.exports.comparePaths = (path1, path2) => {
+export const comparePaths = (path1: string, path2: string): boolean => {
   return path1 === path2 || Path.normalize(path1) === Path.normalize(path2)
 }
 
-module.exports.isNullOrNaN = (num) => {
-  return num === null || isNaN(num)
+export const isNullOrNaN = (num: unknown): boolean => {
+  // isNaN() coerces its argument to a number (ToNumber); that coercion is the intended check
+  return num === null || isNaN(num as number)
 }
 
 /**
- * @param {number|null|undefined} value
- * @param {number} max
- * @returns {number|null}
  */
-module.exports.clampPositiveInt = (value, max) => {
+export const clampPositiveInt = (value: number | null | undefined, max: number): number | null => {
   if (value == null || !Number.isFinite(value) || value <= 0) return null
   return Math.min(Math.floor(value), max)
 }
 
-const xmlToJSON = (xml) => {
+/** Resolves to the xml2js result object, or null if parsing fails */
+const xmlToJSON = (xml: string): Promise<unknown> => {
   return new Promise((resolve, reject) => {
     parseString(xml, (err, results) => {
       if (err) {
@@ -76,20 +83,15 @@ const xmlToJSON = (xml) => {
     })
   })
 }
-module.exports.xmlToJSON = xmlToJSON
+export { xmlToJSON }
 
-module.exports.getId = (prepend = '') => {
+export const getId = (prepend = ''): string => {
   var _id = Math.random().toString(36).substring(2, 8) + Math.random().toString(36).substring(2, 8) + Math.random().toString(36).substring(2, 8)
   if (prepend) return prepend + '_' + _id
   return _id
 }
 
-/**
- *
- * @param {number} seconds
- * @returns {string}
- */
-function elapsedPretty(seconds) {
+function elapsedPretty(seconds: number): string {
   if (seconds > 0 && seconds < 1) {
     return `${Math.floor(seconds * 1000)} ms`
   }
@@ -118,9 +120,9 @@ function elapsedPretty(seconds) {
   }
   return timeParts.join(' ')
 }
-module.exports.elapsedPretty = elapsedPretty
+export { elapsedPretty }
 
-function secondsToTimestamp(seconds, includeMs = false, alwaysIncludeHours = false) {
+function secondsToTimestamp(seconds: number, includeMs = false, alwaysIncludeHours = false): string {
   var _seconds = seconds
   var _minutes = Math.floor(seconds / 60)
   _seconds -= _minutes * 60
@@ -139,38 +141,40 @@ function secondsToTimestamp(seconds, includeMs = false, alwaysIncludeHours = fal
   }
   return `${_hours}:${_minutes.toString().padStart(2, '0')}:${_seconds.toString().padStart(2, '0')}${msString}`
 }
-module.exports.secondsToTimestamp = secondsToTimestamp
+export { secondsToTimestamp }
 
-module.exports.reqSupportsWebp = (req) => {
+export const reqSupportsWebp = (req: Pick<Request, 'headers'> | null | undefined): boolean => {
   if (!req || !req.headers || !req.headers.accept) return false
   return req.headers.accept.includes('image/webp') || req.headers.accept === '*/*'
 }
 
-module.exports.areEquivalent = areEquivalent
+export { areEquivalent }
 
-module.exports.copyValue = (val) => {
+/** Deep copy of plain data; undefined and "" become null */
+export const copyValue = (val: unknown): unknown => {
   if (val === undefined || val === '') return null
   else if (!val) return val
 
-  if (!this.isObject(val)) return val
+  if (!isObject(val)) return val
 
   if (Array.isArray(val)) {
-    return val.map(this.copyValue)
+    return val.map(copyValue)
   } else {
-    var final = {}
+    var final: Record<string, unknown> = {}
     for (const key in val) {
-      final[key] = this.copyValue(val[key])
+      final[key] = copyValue((val as Record<string, unknown>)[key])
     }
     return final
   }
 }
 
-module.exports.toNumber = (val, fallback = 0) => {
-  if (isNaN(val) || val === null) return fallback
+export const toNumber = (val: unknown, fallback = 0): number => {
+  // isNaN() coerces its argument to a number (ToNumber); that coercion is the intended check
+  if (isNaN(val as number) || val === null) return fallback
   return Number(val)
 }
 
-module.exports.cleanStringForSearch = (str) => {
+export const cleanStringForSearch = (str: string | null | undefined): string => {
   if (!str) return ''
   // Remove ' . ` " ,
   return str
@@ -179,9 +183,9 @@ module.exports.cleanStringForSearch = (str) => {
     .trim()
 }
 
-const getTitleParts = (title) => {
+const getTitleParts = (title: string | null | undefined): [string, string | null] => {
   if (!title) return ['', null]
-  const prefixesToIgnore = global.ServerSettings.sortingPrefixes || []
+  const prefixesToIgnore: string[] = global.ServerSettings.sortingPrefixes || []
   for (const prefix of prefixesToIgnore) {
     // e.g. for prefix "the". If title is "The Book" return "Book, The"
     if (title.toLowerCase().startsWith(`${prefix} `)) {
@@ -194,20 +198,16 @@ const getTitleParts = (title) => {
 /**
  * Remove sortingPrefixes from title
  * @example "The Good Book" => "Good Book"
- * @param {string} title
- * @returns {string}
  */
-module.exports.getTitleIgnorePrefix = (title) => {
+export const getTitleIgnorePrefix = (title: string | null | undefined): string => {
   return getTitleParts(title)[0]
 }
 
 /**
  * Put sorting prefix at the end of title
  * @example "The Good Book" => "Good Book, The"
- * @param {string} title
- * @returns {string}
  */
-module.exports.getTitlePrefixAtEnd = (title) => {
+export const getTitlePrefixAtEnd = (title: string): string => {
   let [sort, prefix] = getTitleParts(title)
   return prefix ? `${sort}, ${prefix}` : title
 }
@@ -216,10 +216,8 @@ module.exports.getTitlePrefixAtEnd = (title) => {
  * Escape string used in RegExp
  * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#escaping
  *
- * @param {string} str
- * @returns {string}
  */
-module.exports.escapeRegExp = (str) => {
+export const escapeRegExp = (str: unknown): string => {
   if (typeof str !== 'string') return ''
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
@@ -227,10 +225,9 @@ module.exports.escapeRegExp = (str) => {
 /**
  * Validate url string with URL class
  *
- * @param {string} rawUrl
- * @returns {string} null if invalid
+ * @returns null if invalid
  */
-module.exports.validateUrl = (rawUrl) => {
+export const validateUrl = (rawUrl: unknown): string | null => {
   if (!rawUrl || typeof rawUrl !== 'string') return null
   try {
     return new URL(rawUrl).toString()
@@ -243,10 +240,8 @@ module.exports.validateUrl = (rawUrl) => {
 /**
  * Check if a string is a valid UUID
  *
- * @param {string} str
- * @returns {boolean}
  */
-module.exports.isUUID = (str) => {
+export const isUUID = (str: unknown): boolean => {
   if (!str || typeof str !== 'string') return false
   return uuid.validate(str)
 }
@@ -254,10 +249,8 @@ module.exports.isUUID = (str) => {
 /**
  * Check if a string is a valid ASIN
  *
- * @param {string} str
- * @returns {boolean}
  */
-module.exports.isValidASIN = (str) => {
+export const isValidASIN = (str: unknown): boolean => {
   if (!str || typeof str !== 'string') return false
   return /^[A-Z0-9]{10}$/.test(str)
 }
@@ -268,10 +261,9 @@ module.exports.isValidASIN = (str) => {
  * @example "01:00" => 60
  * @example "01" => 1
  *
- * @param {string} timestamp
- * @returns {number}
+ * @returns null if not a valid timestamp
  */
-module.exports.timestampToSeconds = (timestamp) => {
+export const timestampToSeconds = (timestamp: unknown): number | null => {
   if (typeof timestamp !== 'string') {
     return null
   }
@@ -289,23 +281,28 @@ module.exports.timestampToSeconds = (timestamp) => {
 }
 
 class ValidationError extends Error {
-  constructor(paramName, message, status = 400) {
+  paramName: string
+  status: number
+
+  constructor(paramName: string, message: string, status = 400) {
     super(`Query parameter "${paramName}" ${message}`)
     this.name = 'ValidationError'
     this.paramName = paramName
     this.status = status
   }
 }
-module.exports.ValidationError = ValidationError
+export { ValidationError }
 
 class NotFoundError extends Error {
-  constructor(message, status = 404) {
+  status: number
+
+  constructor(message: string, status = 404) {
     super(message)
     this.name = 'NotFoundError'
     this.status = status
   }
 }
-module.exports.NotFoundError = NotFoundError
+export { NotFoundError }
 
 /**
  * Safely extracts a query parameter as a string, rejecting arrays to prevent type confusion
@@ -313,17 +310,17 @@ module.exports.NotFoundError = NotFoundError
  * @example ?author=Smith => "Smith"
  * @example ?author=Smith&author=Jones => throws error
  *
- * @param {Object} query - Query object
- * @param {string} paramName - Parameter name
- * @param {string} defaultValue - Default value if undefined/null
- * @param {boolean} required - Whether the parameter is required
- * @param {number} maxLength - Optional maximum length (defaults to 10000 to prevent ReDoS attacks)
- * @returns {string} String value
+ * @param query - Query object
+ * @param paramName - Parameter name
+ * @param defaultValue - Default value if undefined/null
+ * @param required - Whether the parameter is required
+ * @param maxLength - Optional maximum length (defaults to 10000 to prevent ReDoS attacks)
+ * @returns String value
  * @throws {ValidationError} If value is an array
  * @throws {ValidationError} If value is too long
  * @throws {ValidationError} If value is required but not provided
  */
-module.exports.getQueryParamAsString = (query, paramName, defaultValue = '', required = false, maxLength = 1000) => {
+export const getQueryParamAsString = (query: Record<string, unknown>, paramName: string, defaultValue = '', required = false, maxLength = 1000): string => {
   const value = query[paramName]
   if (value === undefined || value === null) {
     if (required) {
