@@ -1,4 +1,16 @@
+import type FileMetadata = require('../metadata/FileMetadata')
+import type AudioFile = require('./AudioFile')
+
 class AudioTrack {
+  index: number | null
+  startOffset: number | null
+  duration: number | null
+  title: string | null
+  contentUrl: string | null
+  mimeType: string | null
+  codec: string | null
+  metadata: FileMetadata | null
+
   constructor() {
     this.index = null
     this.startOffset = null
@@ -23,7 +35,7 @@ class AudioTrack {
     }
   }
 
-  setData(itemId, audioFile, startOffset) {
+  setData(itemId: string, audioFile: AudioFile, startOffset: number): void {
     this.index = audioFile.index
     this.startOffset = startOffset
     this.duration = audioFile.duration
@@ -35,7 +47,7 @@ class AudioTrack {
     this.metadata = audioFile.metadata.clone()
   }
 
-  setFromStream(title, duration, contentUrl) {
+  setFromStream(title: string, duration: number, contentUrl: string): void {
     this.index = 1
     this.startOffset = 0
     this.duration = duration
@@ -44,4 +56,4 @@ class AudioTrack {
     this.mimeType = 'application/vnd.apple.mpegurl'
   }
 }
-module.exports = AudioTrack
+export = AudioTrack

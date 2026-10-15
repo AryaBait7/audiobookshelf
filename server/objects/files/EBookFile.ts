@@ -1,7 +1,22 @@
-const FileMetadata = require('../metadata/FileMetadata')
+import FileMetadata = require('../metadata/FileMetadata')
+import type LibraryFile = require('./LibraryFile')
+
+interface EBookFileJSON {
+  ino: string | null
+  metadata: ConstructorParameters<typeof FileMetadata>[0]
+  ebookFormat: string | null
+  addedAt: number | null
+  updatedAt: number | null
+}
 
 class EBookFile {
-  constructor(file) {
+  ino: string | null
+  metadata: FileMetadata | null
+  ebookFormat: string | null
+  addedAt: number | null
+  updatedAt: number | null
+
+  constructor(file?: EBookFileJSON | null) {
     this.ino = null
     this.metadata = null
     this.ebookFormat = null
@@ -13,7 +28,7 @@ class EBookFile {
     }
   }
 
-  construct(file) {
+  construct(file: EBookFileJSON): void {
     this.ino = file.ino
     this.metadata = new FileMetadata(file.metadata)
     this.ebookFormat = file.ebookFormat || this.metadata.format
@@ -24,18 +39,19 @@ class EBookFile {
   toJSON() {
     return {
       ino: this.ino,
-      metadata: this.metadata.toJSON(),
+      // metadata is set by construct()/setData(); toJSON is only called on populated files
+      metadata: (this.metadata as FileMetadata).toJSON(),
       ebookFormat: this.ebookFormat,
       addedAt: this.addedAt,
       updatedAt: this.updatedAt
     }
   }
 
-  get isEpub() {
+  get isEpub(): boolean {
     return this.ebookFormat === 'epub'
   }
 
-  setData(libraryFile) {
+  setData(libraryFile: LibraryFile & { metadata: FileMetadata }): void {
     this.ino = libraryFile.ino
     this.metadata = libraryFile.metadata.clone()
     this.ebookFormat = libraryFile.metadata.format
@@ -43,10 +59,11 @@ class EBookFile {
     this.updatedAt = Date.now()
   }
 
-  updateFromLibraryFile(libraryFile) {
+  updateFromLibraryFile(libraryFile: LibraryFile & { metadata: FileMetadata }): boolean {
     var hasUpdated = false
 
-    if (this.metadata.update(libraryFile.metadata)) {
+    // Only called on populated files (metadata set)
+    if ((this.metadata as FileMetadata).update(libraryFile.metadata)) {
       hasUpdated = true
     }
 
@@ -58,4 +75,4 @@ class EBookFile {
     return hasUpdated
   }
 }
-module.exports = EBookFile
+export = EBookFile

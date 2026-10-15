@@ -49,3 +49,8 @@ tailwind.config.js
 /server/objects/Notification.js
 /server/objects/TrackProgressMonitor.js
 /server/objects/metadata/FileMetadata.js
+/server/objects/metadata/AudioMetaTags.js
+/server/objects/files/AudioTrack.js
+/server/objects/files/EBookFile.js
+/server/objects/files/LibraryFile.js
+/server/scanner/MediaProbeData.js

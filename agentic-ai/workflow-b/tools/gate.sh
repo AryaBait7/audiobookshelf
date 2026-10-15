@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Runs every per-session gate from the plan (session-01/migration.md §7) and prints a summary.
 # Usage: bash agentic-ai/workflow-b/tools/gate.sh <NN> <base-rev> <converted .js path>...
-#   <base-rev>: the commit holding the original JS of the converted files (normally HEAD)
+#   <base-rev>: a commit holding the original JS of the converted files; use the baseline 513a0679
+#   (HEAD only works for files first converted in the current session)
 # Logs go to ../migration-evidence/workflow-b/session-logs/sNN-*.
 set -u
 NN="$1"; BASE="$2"; shift 2

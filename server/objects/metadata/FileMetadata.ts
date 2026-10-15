@@ -1,15 +1,18 @@
 interface FileMetadataJSON {
-  filename: string
-  ext: string
-  path: string
-  relPath: string
-  size: number
-  mtimeMs: number
-  ctimeMs: number
-  birthtimeMs: number
+  filename: string | null
+  ext: string | null
+  path: string | null
+  relPath: string | null
+  size: number | null
+  mtimeMs: number | null
+  ctimeMs: number | null
+  birthtimeMs: number | null
 }
 
 type FileMetadataKey = keyof FileMetadataJSON
+
+/** update()/setData() accept a JSON payload or another FileMetadata (all own enumerable keys are iterated) */
+type FileMetadataPayload = Partial<Record<FileMetadataKey, unknown>>
 
 class FileMetadata {
   filename: string | null
@@ -52,7 +55,7 @@ class FileMetadata {
     this.birthtimeMs = metadata.birthtimeMs
   }
 
-  toJSON(): Record<FileMetadataKey, string | number | null> {
+  toJSON(): FileMetadataJSON {
     return {
       filename: this.filename,
       ext: this.ext,
@@ -66,7 +69,7 @@ class FileMetadata {
   }
 
   clone(): FileMetadata {
-    return new FileMetadata(this.toJSON() as FileMetadataJSON)
+    return new FileMetadata(this.toJSON())
   }
 
   get format(): string {
@@ -78,7 +81,7 @@ class FileMetadata {
     return (this.filename as string).replace(this.ext as string, '')
   }
 
-  update(payload: Partial<FileMetadataJSON>): boolean {
+  update(payload: FileMetadataPayload): boolean {
     var hasUpdates = false
     // Writable view for the generic key loop; unknown keys are skipped by the !== undefined check
     const fields = this as Record<FileMetadataKey, unknown>
@@ -92,7 +95,7 @@ class FileMetadata {
     return hasUpdates
   }
 
-  setData(payload: Partial<FileMetadataJSON>): void {
+  setData(payload: FileMetadataPayload): void {
     const fields = this as Record<FileMetadataKey, unknown>
     for (const key in payload) {
       const k = key as FileMetadataKey
