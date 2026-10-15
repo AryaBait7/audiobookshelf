@@ -65,3 +65,9 @@ tailwind.config.js
 /server/objects/DailyLog.js
 /server/managers/LogManager.js
 /server/managers/MigrationManager.js
+/server/models/Session.js
+/server/models/LibraryFolder.js
+/server/models/CollectionBook.js
+/server/models/BookAuthor.js
+/server/models/BookSeries.js
+/server/models/PlaylistMediaItem.js

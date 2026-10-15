@@ -29,6 +29,10 @@ if [ $# -gt 0 ]; then
   node "$T/export-shape.js" "$BASE" "$@" > "$L/s$NN-export-shape.log" 2>&1; ES=$?; say "$(tail -1 "$L/s$NN-export-shape.log") (exit $ES); differing: $(grep -E "^DIFF" "$L/s$NN-export-shape.log" | cut -c7- | paste -sd' ' -)"
   node "$T/emit-diff.js" "$BASE" "$@" > "$L/s$NN-emit-diff.log" 2>&1; say "$(tail -1 "$L/s$NN-emit-diff.log" | cut -d'(' -f1)"
 fi
+if ls server/models/*.ts >/dev/null 2>&1; then
+  npm run build:server > /dev/null 2>&1
+  node "$T/model-shadow-check.js" > "$L/s$NN-model-shadow.log" 2>&1; say "$(tail -1 "$L/s$NN-model-shadow.log") (exit $?)"
+fi
 bash "$T/strict-check.sh" "$L/s$NN-strict.log" > /dev/null 2>&1
 tail -6 "$L/s$NN-strict.log" | tee -a "$S"
 npm run clean:ts > /dev/null 2>&1   # smoke must rebuild via prestart

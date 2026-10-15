@@ -31,6 +31,12 @@ declare namespace AbsShared {
 
   type LibraryFileType = 'image' | 'audio' | 'ebook' | 'text' | 'metadata' | 'unknown'
 
+  /**
+   * The Sequelize instance as patched by Database.connect(): it adds uppercaseFirst(), used by models
+   * to build association mixin names (e.g. `get${uppercaseFirst(mediaItemType)}`).
+   */
+  type AbsSequelize = import('sequelize').Sequelize & { uppercaseFirst(str: string | null | undefined): string }
+
   interface LibraryFileJSON {
     ino: string | null
     metadata: Record<string, any>
