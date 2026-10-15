@@ -19,7 +19,8 @@
     "deploy-linux": "node deploy/linux",
     "test": "mocha",
     "coverage": "nyc mocha",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json && node -e \"require('fs').cpSync('server/libs','dist/server/libs',{recursive:true})\""
   },
   "bin": "index.js",
   "pkg": {
@@ -34,7 +35,10 @@
     ]
   },
   "mocha": {
-    "recursive": true
+    "recursive": true,
+    "require": [
+      "tsx/cjs"
+    ]
   },
   "author": "advplyr",
   "license": "GPL-3.0",
@@ -61,15 +65,16 @@
     "xml2js": "^0.5.0"
   },
   "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.0.0",
     "chai": "^4.3.10",
     "mocha": "^10.2.0",
     "nodemon": "^2.0.20",
     "nyc": "^15.1.0",
     "sinon": "^17.0.1",
-    "typescript": "7.0.2",
-    "@types/node": "^20.0.0",
-    "@types/express": "^4.17.21",
-    "@types/mocha": "^10.0.6"
+    "tsx": "^4.23.15",
+    "typescript": "7.0.2"
   },
   "allowScripts": {
     "sqlite3@5.1.7": true
