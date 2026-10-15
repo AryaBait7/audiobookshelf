@@ -16,11 +16,11 @@ const Path = require('path')
 process.env.NODE_ENV = options.dev ? 'development' : process.env.NODE_ENV || 'production'
 
 const server = require('./server/Server')
-global.appRoot = __dirname
+global.appRoot = Path.basename(__dirname) === 'dist' ? Path.dirname(__dirname) : __dirname // repo root even when running the built output from dist/
 
 const isDev = process.env.NODE_ENV !== 'production'
 if (isDev || options['prod-with-dev-env']) {
-  const devEnv = require('./dev').config
+  const devEnv = require(Path.join(global.appRoot, 'dev')).config
   if (devEnv.Port) process.env.PORT = devEnv.Port
   if (devEnv.ConfigPath) process.env.CONFIG_PATH = devEnv.ConfigPath
   if (devEnv.MetadataPath) process.env.METADATA_PATH = devEnv.MetadataPath

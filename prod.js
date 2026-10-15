@@ -14,7 +14,7 @@ process.env.NODE_ENV = 'production'
 
 const server = require('./server/Server')
 
-global.appRoot = __dirname
+global.appRoot = Path.basename(__dirname) === 'dist' ? Path.dirname(__dirname) : __dirname // repo root even when running the built output from dist/
 
 var inputConfig = options.config ? Path.resolve(options.config) : null
 var inputMetadata = options.metadata ? Path.resolve(options.metadata) : null
