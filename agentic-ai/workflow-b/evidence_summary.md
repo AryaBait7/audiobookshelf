@@ -15,3 +15,4 @@ Baseline (513a0679): 184 eligible JS files (169 convertible; 15 Umzug migrations
 | 09 | utils/fileUtils (hub, 34 dependants) + ssrf-req-filter d.ts | 33 | 354 / 0 | 0 | 13/13 | Found module-level `this` export-routing hazard; recipe amended to ES named exports for incremental-export modules. Strict 0 |
 | 10 | utils/index (hub, 36 dependants), zipHelpers, rateLimiterFactory | 36 | 354 / 0 | 0 | 13/13 | Named-export recipe; `this.x` routing verified in emit. Strict 0 |
 | 11 | DailyLog, LogManager, MigrationManager; umzug d.ts, @types/semver | 39 | 354 / 0 | 0 | 13/13 | Export shape 3/3, strict 0. Found never-set `global.configPath` default (recorded) |
+| 12 | Stop + final measure.sh + FINDINGS (BinaryManager deferred for a human decision) | 39 | 354 / 0 | 0 | 13/13 | Final: 39/169 convertible (23%), strict 0, any 0, directives 0. checkJs on remaining JS 4,056 first-party (baseline JS with today's deps: 4,114) |
