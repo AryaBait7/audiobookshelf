@@ -1,11 +1,22 @@
-const axios = require('axios')
-const Path = require('path')
-const ssrfFilter = require('ssrf-req-filter')
-const exec = require('child_process').exec
-const fs = require('../libs/fsExtra')
-const rra = require('../libs/recursiveReaddirAsync')
-const Logger = require('../Logger')
-const { AudioMimeType } = require('./constants')
+/// <reference path="../../types/global.d.ts" />
+/// <reference path="../../types/ssrf-req-filter.d.ts" />
+// Exports: ES named exports (emitted onto the original `exports` object). This module used
+// module-level `this.x(...)` (this === module.exports in CommonJS); `export const` bindings keep
+// that routing because TS emits their references as `exports.x`.
+// axios 0.27 types only declare an ES default export; at runtime require('axios').default === require('axios')
+import axios from 'axios'
+import Path = require('path')
+import ssrfFilter = require('ssrf-req-filter')
+import childProcess = require('child_process')
+import fs = require('../libs/fsExtra')
+import rra = require('../libs/recursiveReaddirAsync')
+import Logger = require('../Logger')
+import constants = require('./constants')
+import type { AxiosResponse } from 'axios'
+import type { Readable } from 'stream'
+
+const exec = childProcess.exec
+const { AudioMimeType } = constants
 
 /**
  * Make sure folder separator is POSIX for Windows file paths. e.g. "C:\Users\Abs" becomes "C:/Users/Abs"
@@ -13,11 +24,11 @@ const { AudioMimeType } = require('./constants')
  * @param {String} path - Ugly file path
  * @return {String} Pretty posix file path
  */
-const filePathToPOSIX = (path) => {
+const filePathToPOSIX = (path: string): string => {
   if (!global.isWin || !path) return path
   return path.startsWith('\\\\') ? '\\\\' + path.slice(2).replace(/\\/g, '/') : path.replace(/\\/g, '/')
 }
-module.exports.filePathToPOSIX = filePathToPOSIX
+export { filePathToPOSIX }
 
 /**
  * Check path is a child of or equal to another path
@@ -26,7 +37,7 @@ module.exports.filePathToPOSIX = filePathToPOSIX
  * @param {string} childPath
  * @returns {boolean}
  */
-function isSameOrSubPath(parentPath, childPath) {
+function isSameOrSubPath(parentPath: string, childPath: string): boolean {
   parentPath = filePathToPOSIX(parentPath)
   childPath = filePathToPOSIX(childPath)
   if (parentPath === childPath) return true
@@ -36,9 +47,9 @@ function isSameOrSubPath(parentPath, childPath) {
     (!relativePath.startsWith('..') && !Path.isAbsolute(relativePath)) // Sub path
   )
 }
-module.exports.isSameOrSubPath = isSameOrSubPath
+export { isSameOrSubPath }
 
-function getFileStat(path) {
+function getFileStat(path: string) {
   try {
     return fs.stat(path)
   } catch (err) {
@@ -47,7 +58,16 @@ function getFileStat(path) {
   }
 }
 
-async function getFileTimestampsWithIno(path) {
+interface FileTimestampsWithIno {
+  size: number
+  mtimeMs: number
+  ctimeMs: number
+  birthtimeMs: number
+  ino: string
+}
+
+/** Resolves false when stat fails */
+async function getFileTimestampsWithIno(path: string): Promise<FileTimestampsWithIno | false> {
   try {
     var stat = await fs.stat(path, { bigint: true })
     return {
@@ -62,25 +82,22 @@ async function getFileTimestampsWithIno(path) {
     return false
   }
 }
-module.exports.getFileTimestampsWithIno = getFileTimestampsWithIno
+export { getFileTimestampsWithIno }
 
 /**
  * Get file size
  *
- * @param {string} path
- * @returns {Promise<number>}
  */
-module.exports.getFileSize = async (path) => {
+export const getFileSize = async (path: string): Promise<number> => {
   return (await getFileStat(path))?.size || 0
 }
 
 /**
  * Get file mtimeMs
  *
- * @param {string} path
- * @returns {Promise<number>} epoch timestamp
+ * @returns epoch timestamp
  */
-module.exports.getFileMTimeMs = async (path) => {
+export const getFileMTimeMs = async (path: string): Promise<number> => {
   try {
     return (await getFileStat(path))?.mtimeMs || 0
   } catch (err) {
@@ -89,12 +106,7 @@ module.exports.getFileMTimeMs = async (path) => {
   }
 }
 
-/**
- *
- * @param {string} filepath
- * @returns {boolean}
- */
-async function checkPathIsFile(filepath) {
+async function checkPathIsFile(filepath: string): Promise<boolean> {
   try {
     const stat = await fs.stat(filepath)
     return stat.isFile()
@@ -102,9 +114,9 @@ async function checkPathIsFile(filepath) {
     return false
   }
 }
-module.exports.checkPathIsFile = checkPathIsFile
+export { checkPathIsFile }
 
-function getIno(path) {
+function getIno(path: string): Promise<string | null> {
   return fs
     .stat(path, { bigint: true })
     .then((data) => String(data.ino))
@@ -113,14 +125,12 @@ function getIno(path) {
       return null
     })
 }
-module.exports.getIno = getIno
+export { getIno }
 
 /**
  * Read contents of file
- * @param {string} path
- * @returns {string}
  */
-async function readTextFile(path) {
+async function readTextFile(path: string): Promise<string> {
   try {
     var data = await fs.readFile(path)
     return String(data)
@@ -129,15 +139,13 @@ async function readTextFile(path) {
     return ''
   }
 }
-module.exports.readTextFile = readTextFile
+export { readTextFile }
 
 /**
  * Check if file or directory should be ignored. Returns a string of the reason to ignore, or null if not ignored
  *
- * @param {string} path
- * @returns {string}
  */
-module.exports.shouldIgnoreFile = (path) => {
+export const shouldIgnoreFile = (path: string): string | null => {
   // Check if directory or file name starts with "."
   if (Path.basename(path).startsWith('.')) {
     return 'dotfile'
@@ -165,23 +173,35 @@ module.exports.shouldIgnoreFile = (path) => {
   return null
 }
 
-/**
- * @typedef FilePathItem
- * @property {string} name - file name e.g. "audiofile.m4b"
- * @property {string} path - fullpath excluding folder e.g. "Author/Book/audiofile.m4b"
- * @property {string} reldirpath - path excluding file name e.g. "Author/Book"
- * @property {string} fullpath - full path e.g. "/audiobooks/Author/Book/audiofile.m4b"
- * @property {string} extension - file extension e.g. ".m4b"
- * @property {number} deep - depth of file in directory (0 is file in folder root)
- */
+export interface FilePathItem {
+  /** file name e.g. "audiofile.m4b" */
+  name: string
+  /** fullpath excluding folder e.g. "Author/Book/audiofile.m4b" */
+  path: string
+  /** path excluding file name e.g. "Author/Book" */
+  reldirpath: string
+  /** full path e.g. "/audiobooks/Author/Book/audiofile.m4b" */
+  fullpath: string
+  /** file extension e.g. ".m4b" */
+  extension: string
+  /** depth of file in directory (0 is file in folder root) */
+  deep: number
+}
+
+/** Item returned by the vendored recursive-readdir-async list() in LIST mode with the options used below */
+interface RraListItem {
+  name: string
+  fullname: string
+  path: string
+  extension: string
+  deep: number
+  error?: unknown
+}
 
 /**
  * Get array of files inside dir
- * @param {string} path
- * @param {string} [relPathToReplace]
- * @returns {FilePathItem[]}
  */
-module.exports.recurseFiles = async (path, relPathToReplace = null) => {
+export const recurseFiles = async (path: string, relPathToReplace: string | null = null): Promise<FilePathItem[]> => {
   path = filePathToPOSIX(path)
   if (!path.endsWith('/')) path = path + '/'
 
@@ -202,15 +222,16 @@ module.exports.recurseFiles = async (path, relPathToReplace = null) => {
     realPath: true,
     normalizePath: false
   }
-  let list = await rra.list(path, options)
+  // list() resolves to the item array, or to an object with `error` when reading the root fails
+  let list: RraListItem[] & { error?: unknown } = await rra.list(path, options)
   if (list.error) {
     Logger.error('[fileUtils] Recurse files error', list.error)
     return []
   }
 
-  const directoriesToIgnore = []
+  const directoriesToIgnore: string[] = []
 
-  list = list
+  const items: FilePathItem[] = list
     .filter((item) => {
       if (item.error) {
         Logger.error(`[fileUtils] Recurse files file "${item.fullname}" has error`, item.error)
@@ -232,7 +253,7 @@ module.exports.recurseFiles = async (path, relPathToReplace = null) => {
       }
 
       // Check for ignored extensions or directories
-      const shouldIgnore = this.shouldIgnoreFile(relpath)
+      const shouldIgnore = shouldIgnoreFile(relpath)
       if (shouldIgnore) {
         Logger.debug(`[fileUtils] Ignoring ${shouldIgnore} - "${relpath}"`)
         return false
@@ -261,17 +282,15 @@ module.exports.recurseFiles = async (path, relPathToReplace = null) => {
     })
 
   // Sort from least deep to most
-  list.sort((a, b) => a.deep - b.deep)
+  items.sort((a, b) => a.deep - b.deep)
 
-  return list
+  return items
 }
 
 /**
- *
- * @param {import('../Watcher').PendingFileUpdate} fileUpdate
- * @returns {FilePathItem}
+ * @param fileUpdate a Watcher PendingFileUpdate (only relPath and path are read)
  */
-module.exports.getFilePathItemFromFileUpdate = (fileUpdate) => {
+export const getFilePathItemFromFileUpdate = (fileUpdate: { relPath: string; path: string }): FilePathItem => {
   let relPath = fileUpdate.relPath
   if (relPath.startsWith('/')) relPath = relPath.slice(1)
 
@@ -290,13 +309,11 @@ module.exports.getFilePathItemFromFileUpdate = (fileUpdate) => {
  * Download file from web to local file system
  * Uses SSRF filter to prevent internal URLs
  *
- * @param {string} url
- * @param {string} filepath path to download the file to
- * @param {Function} [contentTypeFilter] validate content type before writing
- * @returns {Promise}
+ * @param filepath path to download the file to
+ * @param contentTypeFilter validate content type before writing
  */
-module.exports.downloadFile = (url, filepath, contentTypeFilter = null) => {
-  return new Promise(async (resolve, reject) => {
+export const downloadFile = (url: string, filepath: string, contentTypeFilter: ((contentType: string | undefined) => boolean | undefined) | null = null): Promise<void> => {
+  return new Promise<void>(async (resolve, reject) => {
     Logger.debug(`[fileUtils] Downloading file to ${filepath}`)
     axios({
       url,
@@ -309,7 +326,8 @@ module.exports.downloadFile = (url, filepath, contentTypeFilter = null) => {
       httpAgent: global.DisableSsrfRequestFilter?.(url) ? null : ssrfFilter(url),
       httpsAgent: global.DisableSsrfRequestFilter?.(url) ? null : ssrfFilter(url)
     })
-      .then((response) => {
+      // responseType 'stream': data is a readable stream
+      .then((response: AxiosResponse<Readable>) => {
         // Validate content type
         if (contentTypeFilter && !contentTypeFilter?.(response.headers?.['content-type'])) {
           return reject(new Error(`Invalid content type "${response.headers?.['content-type'] || ''}"`))
@@ -323,7 +341,7 @@ module.exports.downloadFile = (url, filepath, contentTypeFilter = null) => {
         response.data.pipe(writer)
 
         let lastProgress = 0
-        response.data.on('data', (chunk) => {
+        response.data.on('data', (chunk: Buffer) => {
           downloadedSize += chunk.length
           const progress = totalSize ? Math.round((downloadedSize / totalSize) * 100) : 0
           if (progress >= lastProgress + 5) {
@@ -346,18 +364,16 @@ module.exports.downloadFile = (url, filepath, contentTypeFilter = null) => {
  * Download image file from web to local file system
  * Response header must have content-type of image/ (excluding svg)
  *
- * @param {string} url
- * @param {string} filepath
- * @returns {Promise}
  */
-module.exports.downloadImageFile = (url, filepath) => {
-  const contentTypeFilter = (contentType) => {
+export const downloadImageFile = (url: string, filepath: string): Promise<void> => {
+  const contentTypeFilter = (contentType: string | undefined) => {
     return contentType?.startsWith('image/') && contentType !== 'image/svg+xml'
   }
-  return this.downloadFile(url, filepath, contentTypeFilter)
+  return downloadFile(url, filepath, contentTypeFilter)
 }
 
-module.exports.sanitizeFilename = (filename, colonReplacement = ' - ') => {
+/** Returns false when filename is not a string */
+export const sanitizeFilename = (filename: string | null | undefined, colonReplacement = ' - '): string | false => {
   if (typeof filename !== 'string') {
     return false
   }
@@ -421,14 +437,16 @@ module.exports.sanitizeFilename = (filename, colonReplacement = ' - ') => {
 }
 
 // Returns null if extname is not in our defined list of audio extnames
-module.exports.getAudioMimeTypeFromExtname = (extname) => {
+export const getAudioMimeTypeFromExtname = (extname: string | null | undefined): string | null => {
   if (!extname || !extname.length) return null
-  const formatUpper = extname.slice(1).toUpperCase()
+  // Any upper-cased extension; only known ones are keys of AudioMimeType
+  const formatUpper = extname.slice(1).toUpperCase() as keyof typeof AudioMimeType
   if (AudioMimeType[formatUpper]) return AudioMimeType[formatUpper]
   return null
 }
 
-module.exports.removeFile = (path) => {
+/** Returns false for an empty path, otherwise a promise of success */
+export const removeFile = (path: string | null | undefined): false | Promise<boolean> => {
   if (!path) return false
   return fs
     .remove(path)
@@ -439,7 +457,7 @@ module.exports.removeFile = (path) => {
     })
 }
 
-module.exports.encodeUriPath = (path) => {
+export const encodeUriPath = (path: string): string => {
   const uri = new URL('/', 'file://')
   // we assign the path here to assure that URL control characters like # are
   // actually interpreted as part of the URL path
@@ -451,10 +469,8 @@ module.exports.encodeUriPath = (path) => {
  * Check if directory is writable.
  * This method is necessary because fs.access(directory, fs.constants.W_OK) does not work on Windows
  *
- * @param {string} directory
- * @returns {Promise<boolean>}
  */
-module.exports.isWritable = async (directory) => {
+export const isWritable = async (directory: string): Promise<boolean> => {
   try {
     const accessTestFile = Path.join(directory, 'accessTest')
     await fs.writeFile(accessTestFile, '')
@@ -469,13 +485,12 @@ module.exports.isWritable = async (directory) => {
 /**
  * Get Windows drives as array e.g. ["C:/", "F:/"]
  *
- * @returns {Promise<string[]>}
  */
-module.exports.getWindowsDrives = async () => {
+export const getWindowsDrives = async (): Promise<string[]> => {
   if (!global.isWin) {
     return []
   }
-  return new Promise((resolve, reject) => {
+  return new Promise<string[]>((resolve, reject) => {
     exec('powershell -Command "(Get-PSDrive -PSProvider FileSystem).Name"', async (error, stdout, stderr) => {
       if (error) {
         reject(error)
@@ -485,7 +500,7 @@ module.exports.getWindowsDrives = async () => {
         ?.split(/\r?\n/)
         .map((line) => line.trim())
         .filter((line) => line)
-      const validDrives = []
+      const validDrives: string[] = []
       for (const drive of drives) {
         let drivepath = drive + ':/'
         if (await fs.pathExists(drivepath)) {
@@ -502,11 +517,8 @@ module.exports.getWindowsDrives = async () => {
 /**
  * Get array of directory paths in a directory
  *
- * @param {string} dirPath
- * @param {number} level
- * @returns {Promise<{ path:string, dirname:string, level:number }[]>}
  */
-module.exports.getDirectoriesInPath = async (dirPath, level) => {
+export const getDirectoriesInPath = async (dirPath: string, level: number): Promise<{ path: string; dirname: string; level: number }[]> => {
   try {
     const paths = await fs.readdir(dirPath)
     let dirs = await Promise.all(
@@ -520,14 +532,16 @@ module.exports.getDirectoriesInPath = async (dirPath, level) => {
         if (!lstat?.isDirectory()) return null
 
         return {
-          path: this.filePathToPOSIX(fullPath),
+          // Originally this.filePathToPOSIX (via module.exports); now the local binding. No caller or test stubs it
+          path: filePathToPOSIX(fullPath),
           dirname,
           level
         }
       })
     )
     dirs = dirs.filter((d) => d)
-    return dirs
+    // nulls (non-directories) were filtered out above
+    return dirs as { path: string; dirname: string; level: number }[]
   } catch (error) {
     Logger.error('Failed to readdir', dirPath, error)
     return []
@@ -537,13 +551,13 @@ module.exports.getDirectoriesInPath = async (dirPath, level) => {
 /**
  * Copies a file from the source path to an existing destination path, preserving the destination's permissions.
  *
- * @param {string} srcPath - The path of the source file.
- * @param {string} destPath - The path of the existing destination file.
- * @returns {Promise<void>} A promise that resolves when the file has been successfully copied.
+ * @param srcPath - The path of the source file.
+ * @param destPath - The path of the existing destination file.
+ * @returns A promise that resolves when the file has been successfully copied.
  * @throws {Error} If there is an error reading the source file or writing the destination file.
  */
-async function copyToExisting(srcPath, destPath) {
-  return new Promise((resolve, reject) => {
+async function copyToExisting(srcPath: string, destPath: string): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
     // Create a readable stream from the source file
     const readStream = fs.createReadStream(srcPath)
 
@@ -575,4 +589,4 @@ async function copyToExisting(srcPath, destPath) {
     })
   })
 }
-module.exports.copyToExisting = copyToExisting
+export { copyToExisting }

@@ -58,3 +58,4 @@ tailwind.config.js
 /server/objects/DeviceInfo.js
 /server/utils/profiler.js
 /server/utils/parsers/parseOPML.js
+/server/utils/fileUtils.js
