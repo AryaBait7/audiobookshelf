@@ -1,13 +1,30 @@
-const uuidv4 = require('uuid').v4
+/// <reference path="../../types/shared.d.ts" />
+import uuid = require('uuid')
+const uuidv4 = uuid.v4
 
-/**
- * @typedef TaskString
- * @property {string} text
- * @property {string} key
- * @property {string[]} [subs]
- */
+type TaskString = AbsShared.TaskString
 
 class Task {
+  id: string | null
+  action: string | null
+  data: Record<string, unknown> | null
+  title: string | null
+  titleKey: string | null
+  titleSubs: string[] | null
+  description: string | null
+  descriptionKey: string | null
+  descriptionSubs: string[] | null
+  error: string | null
+  errorKey: string | null
+  errorSubs: string[] | null
+  showSuccess: boolean
+  isFailed: boolean
+  isFinished: boolean
+  startedAt: number | null
+  finishedAt: number | null
+  /** Set by setFailed() only; not part of toJSON() */
+  failedAt?: number
+
   constructor() {
     /** @type {string} */
     this.id = null
@@ -51,7 +68,7 @@ class Task {
     this.finishedAt = null
   }
 
-  toJSON() {
+  toJSON(): AbsShared.TaskJSON {
     return {
       id: this.id,
       action: this.action,
@@ -76,13 +93,8 @@ class Task {
   /**
    * Set initial task data
    *
-   * @param {string} action
-   * @param {TaskString} titleString
-   * @param {TaskString|null} descriptionString
-   * @param {boolean} showSuccess
-   * @param {Object} [data]
    */
-  setData(action, titleString, descriptionString, showSuccess, data = {}) {
+  setData(action: string, titleString: TaskString, descriptionString: TaskString | null, showSuccess: boolean, data: Record<string, unknown> = {}): void {
     this.id = uuidv4()
     this.action = action
     this.data = { ...data }
@@ -99,9 +111,8 @@ class Task {
   /**
    * Set task as failed
    *
-   * @param {TaskString} messageString
    */
-  setFailed(messageString) {
+  setFailed(messageString: TaskString): void {
     this.error = messageString.text
     this.errorKey = messageString.key || null
     this.errorSubs = messageString.subs || null
@@ -113,10 +124,10 @@ class Task {
   /**
    * Set task as finished
    *
-   * @param {TaskString} [newDescriptionString] update description
-   * @param {boolean} [clearDescription] clear description
+   * @param newDescriptionString update description
+   * @param clearDescription clear description
    */
-  setFinished(newDescriptionString = null, clearDescription = false) {
+  setFinished(newDescriptionString: TaskString | null = null, clearDescription = false): void {
     if (newDescriptionString) {
       this.description = newDescriptionString.text
       this.descriptionKey = newDescriptionString.key || null
@@ -130,4 +141,4 @@ class Task {
     this.finishedAt = Date.now()
   }
 }
-module.exports = Task
+export = Task

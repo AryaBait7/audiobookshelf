@@ -1,7 +1,44 @@
-const uuidv4 = require("uuid").v4
+import uuid = require('uuid')
+const uuidv4 = uuid.v4
+
+interface NotificationJSON {
+  id: string | null
+  libraryId: string | null
+  eventName: string
+  urls: string[]
+  titleTemplate: string
+  bodyTemplate: string
+  enabled: boolean
+  type: string | null
+  lastFiredAt: number | null
+  lastAttemptFailed: boolean
+  numConsecutiveFailedAttempts: number
+  numTimesFired: number
+  createdAt: number | null
+}
+
+/** Keys a client may update (see update()) */
+type UpdatableKey = 'libraryId' | 'eventName' | 'urls' | 'titleTemplate' | 'bodyTemplate' | 'enabled' | 'type'
+
+/** Template variables; values are interpolated with String.prototype.replace */
+type TemplateData = Record<string, string | number | null | undefined>
 
 class Notification {
-  constructor(notification = null) {
+  id: string | null
+  libraryId: string | null
+  eventName: string
+  urls: string[]
+  titleTemplate: string
+  bodyTemplate: string
+  type: string | null
+  enabled: boolean
+  lastFiredAt: number | null
+  lastAttemptFailed: boolean
+  numConsecutiveFailedAttempts: number
+  numTimesFired: number
+  createdAt: number | null
+
+  constructor(notification: NotificationJSON | null = null) {
     this.id = null
     this.libraryId = null
     this.eventName = ''
@@ -22,7 +59,7 @@ class Notification {
     }
   }
 
-  construct(notification) {
+  construct(notification: NotificationJSON): void {
     this.id = notification.id
     this.libraryId = notification.libraryId || null
     this.eventName = notification.eventName
@@ -38,7 +75,7 @@ class Notification {
     this.createdAt = notification.createdAt
   }
 
-  toJSON() {
+  toJSON(): NotificationJSON {
     return {
       id: this.id,
       libraryId: this.libraryId,
@@ -56,7 +93,7 @@ class Notification {
     }
   }
 
-  setData(payload) {
+  setData(payload: Pick<NotificationJSON, UpdatableKey>): void {
     this.id = uuidv4()
     this.libraryId = payload.libraryId || null
     this.eventName = payload.eventName
@@ -68,7 +105,7 @@ class Notification {
     this.createdAt = Date.now()
   }
 
-  update(payload) {
+  update(payload: Partial<Pick<NotificationJSON, UpdatableKey>>): boolean {
     if (!this.enabled && payload.enabled) {
       // Reset
       this.lastFiredAt = null
@@ -76,17 +113,20 @@ class Notification {
       this.numConsecutiveFailedAttempts = 0
     }
 
-    const keysToUpdate = ['libraryId', 'eventName', 'urls', 'titleTemplate', 'bodyTemplate', 'enabled', 'type']
+    const keysToUpdate: UpdatableKey[] = ['libraryId', 'eventName', 'urls', 'titleTemplate', 'bodyTemplate', 'enabled', 'type']
+    // Writable view for the generic key loop below
+    const fields = this as Record<UpdatableKey, unknown>
     var hasUpdated = false
     for (const key of keysToUpdate) {
       if (payload[key] !== undefined) {
         if (key === 'urls') {
-          if (payload[key].join(',') !== this.urls.join(',')) {
-            this.urls = [...payload[key]]
+          // key === 'urls' and payload[key] !== undefined (checked above)
+          if ((payload[key] as string[]).join(',') !== this.urls.join(',')) {
+            this.urls = [...(payload[key] as string[])]
             hasUpdated = true
           }
         } else if (payload[key] !== this[key]) {
-          this[key] = payload[key]
+          fields[key] = payload[key]
           hasUpdated = true
         }
       }
@@ -94,35 +134,36 @@ class Notification {
     return hasUpdated
   }
 
-  updateNotificationFired(success) {
+  updateNotificationFired(success: boolean): void {
     this.lastFiredAt = Date.now()
     this.lastAttemptFailed = !success
     this.numConsecutiveFailedAttempts = success ? 0 : this.numConsecutiveFailedAttempts + 1
     this.numTimesFired++
   }
 
-  replaceVariablesInTemplate(templateText, data) {
+  replaceVariablesInTemplate(templateText: string, data: TemplateData): string {
     const ptrn = /{{ ?([a-zA-Z]+) ?}}/mg
 
-    var match
+    var match: RegExpExecArray | null
     var updatedTemplate = templateText
     while ((match = ptrn.exec(templateText)) != null) {
       if (data[match[1]]) {
-        updatedTemplate = updatedTemplate.replace(match[0], data[match[1]])
+        // replace() applies ToString to a non-function replacement; String() makes that explicit for TS
+        updatedTemplate = updatedTemplate.replace(match[0], String(data[match[1]]))
       }
     }
     return updatedTemplate
   }
 
-  parseTitleTemplate(data) {
+  parseTitleTemplate(data: TemplateData): string {
     return this.replaceVariablesInTemplate(this.titleTemplate, data)
   }
 
-  parseBodyTemplate(data) {
+  parseBodyTemplate(data: TemplateData): string {
     return this.replaceVariablesInTemplate(this.bodyTemplate, data)
   }
 
-  getApprisePayload(data) {
+  getApprisePayload(data: TemplateData): { urls: string[]; title: string; body: string } {
     return {
       urls: this.urls,
       title: this.parseTitleTemplate(data),
@@ -130,4 +171,4 @@ class Notification {
     }
   }
 }
-module.exports = Notification
+export = Notification

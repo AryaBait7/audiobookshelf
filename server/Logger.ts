@@ -1,10 +1,27 @@
-const date = require('./libs/dateAndTime')
-const { LogLevel } = require('./utils/constants')
-const util = require('util')
+/// <reference path="../types/global.d.ts" />
+import date = require('./libs/dateAndTime')
+import constants = require('./utils/constants')
+import util = require('util')
+import type { Socket } from 'socket.io'
+import type LogManager = require('./managers/LogManager')
+
+const { LogLevel } = constants
+
+type LogLevelName = keyof typeof LogLevel
+
+interface SocketListener {
+  id: string
+  socket: Socket
+  level: number
+}
 
 class Logger {
+  logManager: LogManager | null
+  isDev: boolean
+  logLevel: number
+  socketListeners: SocketListener[]
+
   constructor() {
-    /** @type {import('./managers/LogManager')} */
     this.logManager = null
 
     this.isDev = process.env.NODE_ENV !== 'production'
@@ -13,35 +30,30 @@ class Logger {
     this.socketListeners = []
   }
 
-  /**
-   * @returns {string}
-   */
-  get timestamp() {
+  get timestamp(): string {
     return date.format(new Date(), 'YYYY-MM-DD HH:mm:ss.SSS')
   }
 
-  get levelString() {
+  get levelString(): string {
     return this.getLogLevelString(this.logLevel)
   }
 
-  /**
-   * @returns {string}
-   */
-  get source() {
+  get source(): string {
     const regex = global.isWin ? /^.*\\([^\\:]*:[0-9]*):[0-9]*\)*/ : /^.*\/([^/:]*:[0-9]*):[0-9]*\)*/
-    return Error().stack.split('\n')[3].replace(regex, '$1')
+    // V8 always populates Error().stack
+    return (Error().stack as string).split('\n')[3].replace(regex, '$1')
   }
 
-  getLogLevelString(level) {
+  getLogLevelString(level: number): string {
     for (const key in LogLevel) {
-      if (LogLevel[key] === level) {
+      if (LogLevel[key as LogLevelName] === level) {
         return key
       }
     }
     return 'UNKNOWN'
   }
 
-  addSocketListener(socket, level) {
+  addSocketListener(socket: Socket, level: number): void {
     var index = this.socketListeners.findIndex((s) => s.id === socket.id)
     if (index >= 0) {
       this.socketListeners.splice(index, 1, {
@@ -58,18 +70,14 @@ class Logger {
     }
   }
 
-  removeSocketListener(socketId) {
+  removeSocketListener(socketId: string): void {
     this.socketListeners = this.socketListeners.filter((s) => s.id !== socketId)
   }
 
   /**
-   *
-   * @param {number} level
-   * @param {string} levelName
-   * @param {string[]} args
-   * @param {string} src
+   * Non-string args are expanded with util.inspect
    */
-  async #logToFileAndListeners(level, levelName, args, src) {
+  async #logToFileAndListeners(level: number, levelName: string, args: unknown[], src: string): Promise<void> {
     const expandedArgs = args.map((arg) => (typeof arg !== 'string' ? util.inspect(arg) : arg))
     const logObj = {
       timestamp: this.timestamp,
@@ -92,7 +100,7 @@ class Logger {
     }
   }
 
-  setLogLevel(level) {
+  setLogLevel(level: number): void {
     this.logLevel = level
     this.debug(`Set Log Level to ${this.levelString}`)
   }
@@ -105,9 +113,9 @@ class Logger {
     ERROR: 'error',
     FATAL: 'error',
     NOTE: 'log'
-  }
+  } as const
 
-  #log(levelName, source, ...args) {
+  #log(levelName: LogLevelName, source: string, ...args: unknown[]): Promise<void> | undefined {
     const level = LogLevel[levelName]
     if (level < LogLevel.FATAL && level < this.logLevel) return
     const consoleMethod = Logger.ConsoleMethods[levelName]
@@ -115,32 +123,32 @@ class Logger {
     return this.#logToFileAndListeners(level, levelName, args, source)
   }
 
-  trace(...args) {
+  trace(...args: unknown[]): void {
     this.#log('TRACE', this.source, ...args)
   }
 
-  debug(...args) {
+  debug(...args: unknown[]): void {
     this.#log('DEBUG', this.source, ...args)
   }
 
-  info(...args) {
+  info(...args: unknown[]): void {
     this.#log('INFO', this.source, ...args)
   }
 
-  warn(...args) {
+  warn(...args: unknown[]): void {
     this.#log('WARN', this.source, ...args)
   }
 
-  error(...args) {
+  error(...args: unknown[]): void {
     this.#log('ERROR', this.source, ...args)
   }
 
-  fatal(...args) {
+  fatal(...args: unknown[]): Promise<void> | undefined {
     return this.#log('FATAL', this.source, ...args)
   }
 
-  note(...args) {
+  note(...args: unknown[]): void {
     this.#log('NOTE', this.source, ...args)
   }
 }
-module.exports = new Logger()
+export = new Logger()

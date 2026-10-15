@@ -43,3 +43,9 @@ tailwind.config.js
 /server/utils/generators/opmlGenerator.js
 /server/utils/parsers/parseFullName.js
 /server/utils/parsers/parseNameString.js
+/server/Logger.js
+/server/objects/Task.js
+/server/objects/Backup.js
+/server/objects/Notification.js
+/server/objects/TrackProgressMonitor.js
+/server/objects/metadata/FileMetadata.js
