@@ -30,3 +30,8 @@ tailwind.config.js
 /server/utils/stringifySequelizeQuery.js
 /server/utils/requestUtils.js
 /server/utils/parsers/parseNfoMetadata.js
+/server/utils/areEquivalent.js
+/server/utils/globals.js
+/server/utils/longTimeout.js
+/server/utils/parsers/parseSeriesString.js
+/server/utils/parsers/parseUserAgent.js

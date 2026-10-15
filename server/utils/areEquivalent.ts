@@ -17,10 +17,11 @@
  @param value2 Other item to compare
  @param stack Used internally to track circular refs - don't set it
  */
-module.exports = function areEquivalent(value1, value2, numToString = false, stack = []) {
+function areEquivalent(value1: unknown, value2: unknown, numToString = false, stack: unknown[] = []): boolean {
   if (numToString) {
-    if (value1 !== null && !isNaN(value1)) value1 = String(value1)
-    if (value2 !== null && !isNaN(value2)) value2 = String(value2)
+    // isNaN() coerces its argument to a number (ToNumber); that coercion is the intended check
+    if (value1 !== null && !isNaN(value1 as number)) value1 = String(value1)
+    if (value2 !== null && !isNaN(value2 as number)) value2 = String(value2)
   }
 
   // Numbers, strings, null, undefined, symbols, functions, booleans.
@@ -48,7 +49,7 @@ module.exports = function areEquivalent(value1, value2, numToString = false, sta
   // (only way they can still be equivalent but not equal)
   if (type1 === 'number') {
     // Failed initial equals test, but could still both be NaN
-    return (isNaN(value1) && isNaN(value2));
+    return (isNaN(value1 as number) && isNaN(value2 as number));
   }
 
   // Special case for function: check for toString() equivalence
@@ -56,12 +57,13 @@ module.exports = function areEquivalent(value1, value2, numToString = false, sta
     // Failed initial equals test, but could still have equivalent
     // implementations - note, will match on functions that have same name
     // and are native code: `function abc() { [native code] }`
-    return value1.toString() === value2.toString()
+    return (value1 as Function).toString() === (value2 as Function).toString()
   }
 
   // For these types, cannot still be equal at this point, so fast-fail
+  // (the original also tested type1 === 'function' here; unreachable after the function branch above, TS2367)
   if (type1 === 'bigint' || type1 === 'boolean' ||
-    type1 === 'function' || type1 === 'string' ||
+    type1 === 'string' ||
     type1 === 'symbol') {
     // console.log('no match for values', value1, value2)
     return false
@@ -113,8 +115,11 @@ module.exports = function areEquivalent(value1, value2, numToString = false, sta
   // Final case: object
 
   // get both key lists and check length
-  const keys1 = Object.keys(value1)
-  const keys2 = Object.keys(value2)
+  // Only non-null, non-array objects reach this point
+  const obj1 = value1 as Record<string, unknown>
+  const obj2 = value2 as Record<string, unknown>
+  const keys1 = Object.keys(obj1)
+  const keys2 = Object.keys(obj2)
   const numKeys = keys1.length
 
   if (keys2.length !== numKeys) {
@@ -142,7 +147,7 @@ module.exports = function areEquivalent(value1, value2, numToString = false, sta
 
   // Ensure perfect match across all values
   for (let i = 0; i < numKeys; i++) {
-    if (!areEquivalent(value1[keys1[i]], value2[keys1[i]], numToString, stack)) {
+    if (!areEquivalent(obj1[keys1[i]], obj2[keys1[i]], numToString, stack)) {
       // console.log('2 subobjects not equiv', keys1[i], value1[keys1[i]], value2[keys1[i]])
       return false
     }
@@ -155,3 +160,5 @@ module.exports = function areEquivalent(value1, value2, numToString = false, sta
   // 🦆🦆
   return true;
 }
+
+export = areEquivalent

@@ -8,7 +8,7 @@ WT="$(cd "$(dirname "$0")/../../.." && pwd)"
 cd "$WT"
 TSC="$WT/../migration-evidence/tools/node_modules/.bin/tsc"
 WTM="$(cygpath -m "$WT" 2>/dev/null || echo "$WT")"
-LOG="${1:-/dev/stdout}"
+LOG="${1:-$(mktemp)}"; SHOW_ALL=${1:+0}
 TSFILES=$( (git ls-files --cached --others --exclude-standard -- 'server/' 'index.ts' 'prod.ts') | grep -v '^server/libs/' | grep -E '\.ts$' | grep -vE '\.d\.ts$' | while read -r f; do [ -f "$f" ] && echo "$f"; done)
 CFG="$(mktemp -d)/strict.json"
 INC=$(echo "$TSFILES" | sed "s#^#\"$WTM/#; s#\$#\"#" | paste -sd, -)
@@ -38,4 +38,4 @@ cnt() { echo "$TSFILES" | xargs grep -oE "$1" 2>/dev/null | wc -l; }
   echo "non_null_assertions: $(cnt '[A-Za-z0-9_\)\]]!\.')"
 } > "$LOG"
 rm -f "$LOG.tmp"
-[ "$LOG" != /dev/stdout ] && tail -6 "$LOG"
+if [ "${SHOW_ALL:-1}" = 1 ]; then cat "$LOG"; else tail -6 "$LOG"; fi
