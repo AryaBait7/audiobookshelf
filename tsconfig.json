@@ -10,6 +10,7 @@
     "skipLibCheck": true,
     "strict": false,
     "noImplicitAny": false,
+    "useDefineForClassFields": false,
     "types": ["node", "mocha"]
   },
   "include": ["index.js", "prod.js", "server/**/*", "types/**/*"],

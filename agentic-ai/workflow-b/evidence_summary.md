@@ -4,4 +4,5 @@ Baseline (513a0679): 184 eligible JS files (169 convertible; 15 Umzug migrations
 
 | Session | Batch | TS files in scope | Tests passing / failing | Typecheck errors | Smoke | Notes |
 |---|---|---|---|---|---|---|
-| 01 | Investigation + plan | 0 | 354 / 0 | 0 | 13/13 | No production code changes. Plan awaiting human review |
+| 01 | Investigation + plan | 0 | 354 / 0 | 0 | 13/13 | No production code changes. Plan approved by the human before session 02 |
+| 02 | Toolchain (in-place emit, pre-hooks, Docker/CI build step) + 4 pilot leaves | 4 | 354 / 0 | 0 | 13/13 | Strict 0 errors, any 0. Export shape 4/4 same. Docker build unverified (daemon not running) |
